@@ -26,8 +26,11 @@ const jobSchema = new Schema<IJob>(
 
 jobSchema.index({ contractId: 1, paid: 1 });
 jobSchema.index({ paid: 1, paymentDate: 1 });
-// sparse+unique: only paid jobs have a reference set
-jobSchema.index({ paymentReference: 1 }, { sparse: true, unique: true });
+// Only paid jobs have a paymentReference — partial filter excludes null values from the index
+jobSchema.index(
+  { paymentReference: 1 },
+  { unique: true, partialFilterExpression: { paymentReference: { $type: 'string' } } },
+);
 
 const Job = model<IJob>('Job', jobSchema);
 export default Job;
