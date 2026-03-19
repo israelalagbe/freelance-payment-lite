@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from 'express';
-import { authMiddleware, contractsController, jobsController, balancesController } from '../container';
+import { authMiddleware, contractsController, jobsController, balancesController, adminController } from '../container';
 
 const router = Router();
 
@@ -13,5 +13,9 @@ router.post('/jobs/:job_id/pay', authMiddleware, jobsController.pay as RequestHa
 
 // ── Balances ───────────────────────────────────────────────────────────────────
 router.post('/balances/deposit/:userId', authMiddleware, balancesController.deposit as unknown as RequestHandler);
+
+// ── Admin analytics ──────────────────────────────────────────────────────────
+router.get('/admin/best-profession', adminController.getBestProfession as RequestHandler);
+router.get('/admin/best-clients', adminController.getBestClients as RequestHandler);
 
 export default router;
