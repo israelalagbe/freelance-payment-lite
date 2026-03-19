@@ -7,6 +7,19 @@ A REST API for a freelance payment platform. Clients post contracts, hire contra
 - Node.js ≥ 20
 - MongoDB with a replica set enabled (required for transactions)
 
+If you are running MongoDB locally via Homebrew, add the following to `/opt/homebrew/etc/mongod.conf` and restart:
+
+```yaml
+replication:
+  replSetName: "rs0"
+```
+
+Then initialise the replica set once:
+
+```bash
+mongosh --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+```
+
 ## Setup
 
 ```bash
