@@ -1,6 +1,10 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/authenticate';
 import { PaymentService } from '../services/PaymentService';
+import { ValidateHeaders } from '../decorators/ValidateHeaders';
+import { ValidateParams } from '../decorators/ValidateParams';
+import { PayJobHeaders } from '../dtos/jobs.dto';
+import { JobParams } from '../dtos/common.dto';
 
 export class JobsController {
   constructor(private readonly paymentService: PaymentService) {}
@@ -14,13 +18,14 @@ export class JobsController {
     }
   };
 
-  pay = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  @ValidateParams(JobParams)
+  @ValidateHeaders(PayJobHeaders)
+  pay = async (req: AuthRequest & { paramsDto: JobParams; headersDto: PayJobHeaders }, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const paymentReference = req.headers['idempotency-key'];
       const job = await this.paymentService.payJob(
-        String(req.params.job_id),
+        req.paramsDto.job_id,
         req.profile._id,
-        typeof paymentReference === 'string' ? paymentReference : undefined,
+        req.headersDto['idempotency-key'],
       );
       res.json(job);
     } catch (err) {
