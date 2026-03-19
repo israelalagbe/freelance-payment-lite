@@ -38,12 +38,23 @@ describe('GET /jobs/unpaid', () => {
 });
 
 describe('POST /jobs/:job_id/pay', () => {
+  test('returns 400 when idempotency-key header is missing', async () => {
+    const { client, job } = await createJobFixtures();
+
+    const res = await request(app)
+      .post(`/jobs/${job._id}/pay`)
+      .set('profile_id', client._id.toString());
+
+    expect(res.status).toBe(400);
+  });
+
   test('successfully pays a job and transfers balance', async () => {
     const { client, contractor, job } = await createJobFixtures();
 
     const res = await request(app)
       .post(`/jobs/${job._id}/pay`)
-      .set('profile_id', client._id.toString());
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'pay-success-1');
 
     expect(res.status).toBe(200);
     expect(res.body.paid).toBe(true);
@@ -61,12 +72,14 @@ describe('POST /jobs/:job_id/pay', () => {
 
     const first = await request(app)
       .post(`/jobs/${job._id}/pay`)
-      .set('profile_id', client._id.toString());
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'double-pay-1');
     expect(first.status).toBe(200);
 
     const second = await request(app)
       .post(`/jobs/${job._id}/pay`)
-      .set('profile_id', client._id.toString());
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'double-pay-2');
     expect(second.status).toBe(400);
 
     const updatedClient = await Profile.findById(client._id);
@@ -78,7 +91,8 @@ describe('POST /jobs/:job_id/pay', () => {
 
     const res = await request(app)
       .post(`/jobs/${job._id}/pay`)
-      .set('profile_id', client._id.toString());
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'insufficient-1');
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/insufficient/i);
@@ -89,7 +103,8 @@ describe('POST /jobs/:job_id/pay', () => {
 
     const res = await request(app)
       .post(`/jobs/${job._id}/pay`)
-      .set('profile_id', contractor._id.toString());
+      .set('profile_id', contractor._id.toString())
+      .set('idempotency-key', 'non-client-1');
 
     expect(res.status).toBe(403);
   });

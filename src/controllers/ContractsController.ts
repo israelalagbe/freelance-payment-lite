@@ -1,14 +1,17 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/authenticate';
 import { ContractService } from '../services/ContractService';
+import { ValidateParams } from '../decorators/ValidateParams';
+import { ContractParams } from '../dtos/common.dto';
 
 export class ContractsController {
   constructor(private readonly contractService: ContractService) {}
 
-  getContract = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  @ValidateParams(ContractParams)
+  getContract = async (req: AuthRequest & { paramsDto: ContractParams }, res: Response, next: NextFunction): Promise<void> => {
     try {
       const contract = await this.contractService.getContractForProfile(
-        String(req.params.id),
+        req.paramsDto.id,
         req.profile._id,
       );
       res.json(contract);
