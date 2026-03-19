@@ -27,7 +27,6 @@ All variables are **required**. The server will refuse to start if any are missi
 |---|---|
 | `PORT` | Port the server listens on |
 | `MONGODB_URI` | MongoDB connection string (replica set required) |
-| `DEPOSIT_LIMIT_PCT` | Maximum deposit as a fraction of total unpaid job value (e.g. `0.25`) |
 | `NODE_ENV` | Environment — one of `development`, `production`, `test` |
 
 ## Running
@@ -95,6 +94,11 @@ Returns a contract by ID. Only visible to the client or contractor on the contra
 
 **Errors:** `401` unauthenticated · `403` not a party to the contract · `404` not found
 
+```bash
+curl http://localhost:3001/contracts/<contract_id> \
+  -H "profile_id: <your_profile_id>"
+```
+
 ---
 
 #### GET /contracts
@@ -104,6 +108,11 @@ Returns all non-terminated contracts belonging to the authenticated profile.
 **Auth:** required
 
 **Response `200`** — array of contract objects
+
+```bash
+curl http://localhost:3001/contracts \
+  -H "profile_id: <your_profile_id>"
+```
 
 ---
 
@@ -116,6 +125,11 @@ Returns all unpaid jobs for active (non-terminated) contracts belonging to the a
 **Auth:** required
 
 **Response `200`** — array of job objects
+
+```bash
+curl http://localhost:3001/jobs/unpaid \
+  -H "profile_id: <your_profile_id>"
+```
 
 ---
 
@@ -132,6 +146,11 @@ Pays for a job. Transfers the job price from the client's balance to the contrac
 ```
 
 **Errors:** `400` insufficient funds or job already paid · `403` not the client · `404` job or contract not found
+
+```bash
+curl -X POST http://localhost:3001/jobs/<job_id>/pay \
+  -H "profile_id: <your_profile_id>"
+```
 
 ---
 
@@ -161,6 +180,13 @@ Deposits funds into a client's account. The deposit cannot exceed 25% of the tot
 
 **Errors:** `400` exceeds cap or invalid amount · `403` depositing into another account · `404` user not found
 
+```bash
+curl -X POST http://localhost:3001/balances/deposit/<user_id> \
+  -H "profile_id: <your_profile_id>" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 50}'
+```
+
 ---
 
 ### Admin
@@ -184,6 +210,10 @@ Returns the profession that earned the most within the given date range.
 { "profession": "Programmer", "earned": 703 }
 ```
 
+```bash
+curl "http://localhost:3001/admin/best-profession?start=2025-01-01&end=2025-12-31"
+```
+
 ---
 
 #### GET /admin/best-clients?start=&end=&limit=
@@ -205,4 +235,8 @@ Returns the clients who paid the most within the given date range.
   { "id": "...", "fullName": "Harry Potter", "paid": 403 },
   { "id": "...", "fullName": "Ash Ketchum", "paid": 200 }
 ]
+```
+
+```bash
+curl "http://localhost:3001/admin/best-clients?start=2025-01-01&end=2025-12-31&limit=3"
 ```

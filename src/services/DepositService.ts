@@ -5,9 +5,7 @@ import { ContractRepository } from '../repositories/ContractRepository';
 import { AuditLogRepository } from '../repositories/AuditLogRepository';
 import { IProfile } from '../models/Profile';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors';
-
-/** Maximum deposit as a fraction of the client's total unpaid-job value. */
-const DEPOSIT_LIMIT_PCT = 0.25;
+import { DEPOSIT_LIMIT_PCT } from '../constants';
 
 export class DepositService {
   constructor(
@@ -46,6 +44,7 @@ export class DepositService {
     if (amount > maxDeposit) {
       throw new BadRequestError(
         `Deposit exceeds limit. Max allowed: ${maxDeposit.toFixed(2)} (${DEPOSIT_LIMIT_PCT * 100}% of unpaid jobs total ${totalUnpaid.toFixed(2)})`,
+
       );
     }
 

@@ -4,7 +4,6 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   PORT: z.string().min(1).transform((v) => parseInt(v, 10)),
   MONGODB_URI: z.string().min(1),
-  DEPOSIT_LIMIT_PCT: z.string().min(1).transform((v) => parseFloat(v)),
   NODE_ENV: z.enum(['development', 'production', 'test']),
 });
 
@@ -18,7 +17,6 @@ if (!parsed.success) {
 const config = {
   port: parsed.data.PORT,
   mongoUri: parsed.data.MONGODB_URI,
-  depositLimitPct: parsed.data.DEPOSIT_LIMIT_PCT,
   nodeEnv: parsed.data.NODE_ENV,
 } as const;
 
