@@ -23,7 +23,8 @@ export class JobRepository {
   }
 
   async findByPaymentReference(reference: string): Promise<IJob | null> {
-    return Job.findOne({ paymentReference: reference });
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return Job.findOne({ paymentReference: reference, paymentDate: { $gte: cutoff } });
   }
 
   async markPaid(

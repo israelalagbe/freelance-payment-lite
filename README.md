@@ -58,7 +58,75 @@ npm run db:seed
 npm test
 ```
 
-32 integration tests across contracts, jobs, balances, and admin suites. Tests use an in-memory MongoDB replica set — no local database required.
+35 integration tests across contracts, jobs, balances, and admin suites. Tests use an in-memory MongoDB replica set — no local database required.
+
+## Design Decisions
+
+### Why MongoDB?
+
+MongoDB was chosen because replica sets come out of the box with `mongodb-memory-server`, making multi-document ACID transactions trivial to test without any external infrastructure. The aggregation pipeline also maps naturally onto the analytics queries (`best-profession`, `best-clients`), where multi-collection `$lookup` + `$group` is more expressive than equivalent SQL joins.
+
+### Stretch goals chosen
+
+| Goal | Rationale |
+|---|---|
+| **A — Idempotency** | Preventing duplicate charges is the highest-priority correctness concern in any payment system. A client retrying on a network timeout must never be charged twice. |
+| **B — Concurrency** | Race conditions on balance deductions are a silent data-integrity risk. Optimistic locking with Mongoose's `__v` field was chosen over pessimistic locking because it avoids held locks under contention and is straightforward to implement without a distributed lock store. |
+| **C — Rate Limiting** | Protects expensive admin analytics endpoints and the payment endpoint from accidental or malicious flooding. In-memory limiter keyed on `profile_id` is sufficient for a single-process deployment. |
+| **D — Audit Log** | Every balance change is appended to an immutable `AuditLog` collection (pre-hooks block updates). This is a compliance necessity: any payment dispute requires a trustworthy event trail. |
+| **E — Indexes** | MongoDB performs collection scans by default. Indexes on `Job.paid + contractId`, `Job.paymentDate`, and `AuditLog.profileId + timestamp` ensure analytics and idempotency lookups remain fast as data grows. |
+
+### Payment atomicity
+
+Payments use a MongoDB multi-document transaction (`session.withTransaction`). Within a single session the following steps are atomic:
+
+1. Fetch and lock the job document.
+2. Debit the client balance using `findOneAndUpdate` with an optimistic version check (`__v`).
+3. Credit the contractor balance.
+4. Mark the job as paid with the idempotency key.
+5. Write an audit log entry.
+
+If any step fails the transaction is rolled back. The optimistic lock on the client profile causes a version mismatch error when two concurrent payments race — exactly one succeeds and the other is rejected with an insufficient-funds / version error.
+
+### Idempotency
+
+The `Idempotency-Key` header is stored as `paymentReference` on the `Job` document. A unique sparse index prevents two jobs from sharing the same reference. On retry, the repository looks up the key but only within a **24-hour window** — keys older than 24 h are considered expired and the retry is treated as a fresh (failing) request, matching the spec requirement.
+
+## The Scale Question
+
+> *If we get 10x more traffic tomorrow, what breaks first?*
+
+### 1. MongoDB connection pool (most likely first failure)
+
+Mongoose defaults to a pool of 5 connections per process. At 10x traffic the pool will be exhausted, causing requests to queue. Every queued request holds a Node.js event-loop tick, latency spikes, and eventually timeouts cascade.
+
+**Fix:** Increase `maxPoolSize` in the connection options (e.g. `100`). Separate reads (analytics) onto a MongoDB read replica so write-heavy payment traffic doesn't compete with slow aggregations.
+
+### 2. In-memory rate limiter state is not shared
+
+The current `express-rate-limit` store is in-process memory. Under a multi-process deployment (PM2 cluster, multiple pods in Kubernetes) each process maintains its own counters, so a single client can effectively multiply its allowed rate by the number of processes.
+
+**Fix:** Swap the store for a Redis-backed implementation (`rate-limit-redis`). Redis provides a shared, atomic counter across all processes.
+
+### 3. Analytics aggregations hold connections
+
+`best-profession` and `best-clients` run multi-stage aggregation pipelines over the full jobs collection for the requested date range. As the jobs collection grows these queries get progressively slower, blocking the connection for longer.
+
+**Fix:** Add a compound index on `{ paid: 1, paymentDate: 1 }` (already present), ensure MongoDB uses it (verify with `.explain()`), and route analytics reads to a replica. For very high traffic, pre-compute results into a summary collection via a scheduled job.
+
+### 4. Single-server deployment
+
+There is one Express process. A single hardware failure or deploy takes the API down.
+
+**Fix:** Deploy behind a load balancer with at least two instances. The stateless Express app scales horizontally without code changes (rate limiter Redis fix must be applied first).
+
+### 5. No query result caching
+
+Repeated identical analytics queries (`best-profession` with the same date range) hit MongoDB every time.
+
+**Fix:** Cache results in Redis with a short TTL (e.g. 60 s for analytics). Payment endpoints must never be cached.
+
+---
 
 ## API Reference
 
@@ -149,7 +217,8 @@ Pays for a job. Transfers the job price from the client's balance to the contrac
 
 ```bash
 curl -X POST http://localhost:3001/jobs/<job_id>/pay \
-  -H "profile_id: <your_profile_id>"
+  -H "profile_id: <your_profile_id>" \
+  -H "idempotency-key: <unique_key>"
 ```
 
 ---
