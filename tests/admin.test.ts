@@ -103,3 +103,21 @@ describe('GET /admin/best-clients', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('Rate limiting', () => {
+  test('returns 429 after 30 analytics requests in the same window', async () => {
+    await createAdminFixtures(new Date(withinRange));
+
+    // Fire 30 requests — all should succeed (or 404, but not 429).
+    for (let i = 0; i < 30; i++) {
+      await request(app).get('/admin/best-profession').query({ start, end });
+    }
+
+    // The 31st request should be rate-limited.
+    const res = await request(app)
+      .get('/admin/best-profession')
+      .query({ start, end });
+
+    expect(res.status).toBe(429);
+  });
+});
