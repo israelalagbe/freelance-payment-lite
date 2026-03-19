@@ -135,19 +135,15 @@ describe('POST /jobs/:job_id/pay', () => {
   test('idempotency key expires after 24 hours (treated as new request)', async () => {
     const { client, job } = await createJobFixtures();
 
-    // First payment succeeds.
     const first = await request(app)
       .post(`/jobs/${job._id}/pay`)
       .set('profile_id', client._id.toString())
       .set('idempotency-key', 'ttl-test-key-1');
     expect(first.status).toBe(200);
 
-    // Simulate the payment having been made 25 hours ago by back-dating paymentDate.
+    // Back-date the payment to 25 hours ago to simulate TTL expiry.
     await Job.updateOne({ _id: job._id }, { paymentDate: new Date(Date.now() - 25 * 60 * 60 * 1000) });
 
-    // Retry with the same key after TTL has expired.
-    // The repository no longer finds the reference (cutoff check fails), so the
-    // service sees the job as already paid and returns 400.
     const retry = await request(app)
       .post(`/jobs/${job._id}/pay`)
       .set('profile_id', client._id.toString())
