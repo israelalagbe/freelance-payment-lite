@@ -21,12 +21,14 @@ cp .env.example .env
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|---|---|---|
-| `PORT` | Port the server listens on | `3001` |
-| `MONGODB_URI` | MongoDB connection string (replica set required) | `mongodb://127.0.0.1:27017/freelance_payment` |
-| `DEPOSIT_LIMIT_PCT` | Maximum deposit as a fraction of total unpaid job value | `0.25` |
-| `NODE_ENV` | Environment (`development` / `production` / `test`) | `development` |
+All variables are **required**. The server will refuse to start if any are missing or invalid.
+
+| Variable | Description |
+|---|---|
+| `PORT` | Port the server listens on |
+| `MONGODB_URI` | MongoDB connection string (replica set required) |
+| `DEPOSIT_LIMIT_PCT` | Maximum deposit as a fraction of total unpaid job value (e.g. `0.25`) |
+| `NODE_ENV` | Environment — one of `development`, `production`, `test` |
 
 ## Running
 
