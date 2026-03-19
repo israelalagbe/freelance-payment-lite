@@ -34,5 +34,17 @@ export class ProfileRepository {
       { returnDocument: 'after', session },
     );
   }
+
+  async deposit(
+    profileId: Types.ObjectId,
+    amount: number,
+    session: ClientSession,
+  ): Promise<IProfile | null> {
+    return Profile.findByIdAndUpdate(
+      profileId,
+      { $inc: { balance: amount } },
+      { returnDocument: 'after', session },
+    );
+  }
 }
 

@@ -4,8 +4,10 @@ import { JobRepository } from './repositories/JobRepository';
 import { AuditLogRepository } from './repositories/AuditLogRepository';
 import { ContractService } from './services/ContractService';
 import { PaymentService } from './services/PaymentService';
+import { DepositService } from './services/DepositService';
 import { ContractsController } from './controllers/ContractsController';
 import { JobsController } from './controllers/JobsController';
+import { BalancesController } from './controllers/BalancesController';
 import { createAuthMiddleware } from './middleware/authenticate';
 
 // ── Repositories ──────────────────────────────────────────────────────────────
@@ -29,4 +31,13 @@ export const paymentService = new PaymentService(
   auditLogRepository,
 );
 export const jobsController = new JobsController(paymentService);
+
+// ── Feature: Balances ─────────────────────────────────────────────────────────
+export const depositService = new DepositService(
+  profileRepository,
+  jobRepository,
+  contractRepository,
+  auditLogRepository,
+);
+export const balancesController = new BalancesController(depositService);
 

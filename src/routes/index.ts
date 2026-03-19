@@ -1,5 +1,5 @@
 import { Router, RequestHandler } from 'express';
-import { authMiddleware, contractsController, jobsController } from '../container';
+import { authMiddleware, contractsController, jobsController, balancesController } from '../container';
 
 const router = Router();
 
@@ -10,5 +10,8 @@ router.get('/contracts', authMiddleware, contractsController.getContracts as Req
 // ── Jobs ───────────────────────────────────────────────────────────────────────
 router.get('/jobs/unpaid', authMiddleware, jobsController.getUnpaidJobs as RequestHandler);
 router.post('/jobs/:job_id/pay', authMiddleware, jobsController.pay as RequestHandler);
+
+// ── Balances ───────────────────────────────────────────────────────────────────
+router.post('/balances/deposit/:userId', authMiddleware, balancesController.deposit as unknown as RequestHandler);
 
 export default router;
