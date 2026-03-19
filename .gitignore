@@ -6,7 +6,6 @@ dist/
 build/
 .DS_Store
 .idea/
-.vscode/
 *.swp
 *.swo
 *.bak
@@ -14,3 +13,4 @@ build/
 *.tsbuildinfo
 *.eslintcache
 *.prettiercache
+.gitignore

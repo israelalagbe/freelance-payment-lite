@@ -132,6 +132,25 @@ describe('POST /jobs/:job_id/pay', () => {
     expect(updatedContractor!.balance).toBe(100);
   });
 
+  test('idempotency key expires after 24 hours (treated as new request)', async () => {
+    const { client, job } = await createJobFixtures();
+
+    const first = await request(app)
+      .post(`/jobs/${job._id}/pay`)
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'ttl-test-key-1');
+    expect(first.status).toBe(200);
+
+    // Back-date the payment to 25 hours ago to simulate TTL expiry.
+    await Job.updateOne({ _id: job._id }, { paymentDate: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+
+    const retry = await request(app)
+      .post(`/jobs/${job._id}/pay`)
+      .set('profile_id', client._id.toString())
+      .set('idempotency-key', 'ttl-test-key-1');
+    expect(retry.status).toBe(400);
+  });
+
   test('concurrent payments do not overdraft the client', async () => {
     const client = await Profile.create({
       firstName: 'Alice', lastName: 'Smith', profession: 'Engineer',
